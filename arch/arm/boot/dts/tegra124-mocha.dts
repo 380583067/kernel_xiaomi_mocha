@@ -1,0 +1,405 @@
+/*
+ * arch/arm/boot/dts/tegra124-mocha.dts
+ *
+ * Copyright (c) 2017, Smoke Team.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+/dts-v1/;
+
+#include "tegra124-tn8.dtsi"
+#include "tegra124-platforms/tegra124-tn8-emc-e1922-1100-a00.dtsi"
+#include "tegra124-platforms/tegra124-mocha-gpio-e1780.dtsi"
+#include "tegra124-platforms/tegra124-mocha-keys-e1780.dtsi"
+#include "tegra124-platforms/tegra124-mocha-pinmux-e1780.dtsi"
+#include "tegra124-platforms/tegra124-mocha-sysedp.dtsi"
+#include "tegra124-platforms/tegra124-mocha-camera.dtsi"
+#include "tegra124-platforms/tegra124-mocha-power-tree.dtsi"
+#include "tegra124-platforms/tegra124-mocha-sdhci.dtsi"
+#include "tegra124-platforms/tegra124-mocha-wireless.dtsi"
+#include "tegra124-platforms/tegra124-mocha-dfll.dtsi"
+#include "tegra124-platforms/tegra124-mocha-thermal.dtsi"
+#include "tegra124-platforms/tegra124-mocha-dvfs.dtsi"
+#include "tegra124-platforms/tegra124-mocha-edp.dtsi"
+#include "tegra124-platforms/tegra124-mocha-nct72.dtsi"
+#include "tegra124-platforms/tegra124-mocha-Tboard-Tdiode.dtsi"
+#include "panel-s-wqxga-7-9-x6.dtsi"
+
+/ {
+	model = "NVIDIA Tegra124 TN8";
+	compatible = "nvidia,tn8", "nvidia,tegra124";
+	nvidia,dtsfilename = __FILE__;
+	nvidia,boardids = "1780:1100:3:A:7","1845:1000:0:A:7";
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	chosen {
+		bootargs = "tegraid=40.0.0.00.00 vmalloc=256M vpr_resize video=tegrafb console=ttyS0,115200n8 earlyprintk";
+		linux,initrd-start = <0x85000000>;
+		linux,initrd-end = <0x851bc400>;
+	};
+
+	firmware {
+		android {
+			compatible = "android,firmware";
+			hardware = "tn8";
+		};
+	};
+
+	host1x {
+		/* tegradc.0 */
+		dc@54200000 {
+			status = "okay";
+			nvidia,dc-flags = <TEGRA_DC_FLAG_ENABLED>;
+			nvidia,emc-clk-rate = <204000000>;
+			nvidia,cmu-enable = <1>;
+			nvidia,low-v-win = <0x2>;
+			nvidia,fb-bpp = <32>; /* bits per pixel */
+			nvidia,fb-flags = <TEGRA_FB_FLIP_ON_PROBE>;
+		};
+		dsi {
+			nvidia,dsi-controller-vs = <DSI_VS_1>;
+			status = "okay";
+			panel-s-wqxga-7-9-x6 {
+				nvidia,dsi-boardinfo = <1780 0 0 0>;
+				nvidia,panel-rst-gpio = <&gpio TEGRA_GPIO(H, 3) 0>; /* PH3 */	
+				disp-default-out {
+					nvidia,out-flags = <TEGRA_DC_OUT_CONTINUOUS_MODE TEGRA_DC_OUT_INITIALIZED_MODE>;
+				};	
+				smartdimmer {
+						status = "disabled";
+				};
+			};
+		};
+	};
+
+	i2c@7000c400 {
+		status = "okay";
+		clock-frequency = <400000>;
+
+		bq27520@55 {
+			compatible = "ti,bq27520";
+			reg = <0x55>;
+
+			interrupt-parent = <&gpio>;
+			interrupts = <133 0>;
+			ti,fw-lgc-name = "0104_lgc.dffs";
+			ti,fw-atl-name = "0204_atl.dffs";
+			ti,tz-name = "battery";
+		};
+	};
+
+	i2c@7000c700 {
+		nvidia,clock-always-on;
+		clock-frequency = <400000>;
+
+		synaptics_dsi_i2c@20 {
+			compatible = "synaptics,dsx-i2c";
+			status = "okay";
+			reg = <0x20>;
+			
+			interrupt-parent = <&gpio>;
+			interrupts = <143 0x2008>;
+			synaptics,irq-gpio = <&gpio 143 0x2008>;
+			synaptics,reset-gpio = <&gpio 84 0x2008>;
+			synaptics,irq-on-state = <0>;
+			synaptics,power-on-state = <1>;
+			synaptics,reset-on-state = <0>;
+			synaptics,power-delay-ms = <160>;
+			synaptics,reset-delay-ms = <100>;
+			synaptics,reset-active-ms = <20>;
+			synaptics,pwr-reg-name = "vdd-touch";
+			synaptics,cap-button-codes = <139 102 158>;
+		};
+
+		atmel_mxt_ts@4a {
+			compatible = "atmel,maxtouch-ts";
+			status = "disabled";
+			reg = <0x4a>;
+
+			interrupt-parent = <&gpio>;
+			interrupts = <143 0x2>;
+			atmel,irq-flags = <0x2008>;
+			atmel,reset-gpio = <&gpio 84 0>;
+			atmel,irq-gpio = <&gpio 143 0>;
+			atmel,gpio-mask = <0xc>;
+			atmel,vendor-info = <0x03eb>;
+			atmel,product-info = <0x214f>;
+			atmel,config-array-size = <3>;
+
+			atmel,cfg_1 {
+				atmel,family-id = <0xA4>;
+				atmel,variant-id = <0x04>;
+				atmel,version = <0x10>;
+				atmel,build = <0xAA>;
+				atmel,user-id = <0x00>;
+				atmel,bootldr-id = <0x48>;
+				atmel,mxt-cfg-name = "mxt1664t_config_no_dummy.fw";
+				atmel,vendor-id = <0x4>;
+				atmel,mxt-fw-name = "mxt1664t.fw";
+				atmel,key-codes = <158 102 139>;
+			};
+			atmel,cfg_2 {
+				atmel,family-id = <0xA4>;
+				atmel,variant-id = <0x04>;
+				atmel,version = <0x10>;
+				atmel,build = <0xAA>;
+				atmel,user-id = <0xAA>;
+				atmel,bootldr-id = <0x48>;
+				atmel,mxt-cfg-name = "mxt1664t_config_with_dummy.fw";
+				atmel,vendor-id = <0x4>;
+				atmel,mxt-fw-name = "mxt1664t.fw";
+				atmel,key-codes = <158 102 139>;
+			};
+			atmel,cfg_3 {
+				atmel,family-id = <0xA4>;
+				atmel,variant-id = <0x0B>;
+				atmel,version = <0x12>;
+				atmel,build = <0xAA>;
+				atmel,user-id = <0x00>;
+				atmel,bootldr-id = <0x51>;
+				atmel,mxt-cfg-name = "mxt1066t_config.fw";
+				atmel,vendor-id = <0x4>;
+				atmel,mxt-fw-name = "mxt1066t.fw";
+				atmel,key-codes = <139 102 158>;
+			};
+		};
+	};
+
+	i2c@7000c000 {
+		backlight@2c {
+			compatible = "ti,lp8556";
+			reg = <0x2c>;
+
+			dev-ctrl = /bits/ 8 <0x83>;
+			init-brt = /bits/ 8 <0x1f>;
+			led-en   = /bits/ 8 <0x0f>;
+
+			rom_98h {
+				rom-addr = /bits/ 8 <0x98>;
+				rom-val = /bits/ 8 <0x80>;
+			};
+			rom_9eh {
+				rom-addr = /bits/ 8 <0x9e>;
+				rom-val = /bits/ 8 <0x21>;
+			};
+			rom_a0h {
+				rom-addr = /bits/ 8 <0xa0>;
+				rom-val = /bits/ 8 <0xff>;
+			};
+			rom_a1h {
+				rom-addr = /bits/ 8 <0xa1>;
+				rom-val = /bits/ 8 <0x3f>;
+			};
+			rom_a2h {
+				rom-addr = /bits/ 8 <0xa2>;
+				rom-val = /bits/ 8 <0x20>;
+			};
+			rom_a3h {
+				rom-addr = /bits/ 8 <0xa3>;
+				rom-val = /bits/ 8 <0x00>;
+			};
+			rom_a4h {
+				rom-addr = /bits/ 8 <0xa4>;
+				rom-val = /bits/ 8 <0x72>;
+			};
+			rom_a5h {
+				rom-addr = /bits/ 8 <0xa5>;
+				rom-val = /bits/ 8 <0x24>;
+			};
+			rom_a6h {
+				rom-addr = /bits/ 8 <0xa6>;
+				rom-val = /bits/ 8 <0x80>;
+			};
+			rom_a7h {
+				rom-addr = /bits/ 8 <0xa7>;
+				rom-val = /bits/ 8 <0xf5>;
+			};
+			rom_a8h {
+				rom-addr = /bits/ 8 <0xa8>;
+				rom-val = /bits/ 8 <0x24>;
+			};
+			rom_a9h {
+				rom-addr = /bits/ 8 <0xa9>;
+				rom-val = /bits/ 8 <0xb2>;
+			};
+			rom_aah {
+				rom-addr = /bits/ 8 <0xaa>;
+				rom-val = /bits/ 8 <0x8f>;
+			};
+			rom_aeh {
+				rom-addr = /bits/ 8 <0xae>;
+				rom-val = /bits/ 8 <0x0f>;
+			};
+		};
+
+		lsm6db0@08 {
+			compatible = "st,lsm6db0";
+			reg = <0x08>;
+
+			st,irq-gpio = <&gpio 139 0x00>;
+			st,reset-gpio = <&gpio 181 0x00>;
+			st,wakeup-gpio = <&gpio 144 0x00>;
+		};
+
+		isl29035@44 {
+			compatible = "intersil,isl29035";
+			reg = <0x44>;
+			interrupt-parent = <&gpio>;
+			interrupts = <187 0x08>;
+
+			als_factor = <16>;
+			als_highrange = <2>;
+			als_lowthres = <0x0e00>;
+			als_highthres = <0xf800>;
+			als_sensitive = <25>;
+		};
+
+		lp5521@32 {
+			compatible = "national,lp5521";
+			reg = <0x32>;
+			lp5521,clock-mode = <0>;
+			lp5521,gpio = <&gpio 55 0>;
+			lp5521,num-channels = <3>;
+
+			lp5521,config_1 {
+				lp5521,name = "red";
+				lp5521,chan-nr = <0>;
+				lp5521,led-current = <20>;
+				lp5521,max-current = <255>;
+			};
+			lp5521,config_2 {
+				lp5521,name = "green";
+				lp5521,chan-nr = <1>;
+				lp5521,led-current = <20>;
+				lp5521,max-current = <255>;
+			};
+			lp5521,config_3 {
+				lp5521,name = "blue";
+				lp5521,chan-nr = <2>;
+				lp5521,led-current = <20>;
+				lp5521,max-current = <255>;
+			};
+		};
+
+		rt5671@1c {
+			compatible = "realtek,rt5671";
+			reg = <0x1c>;
+
+	                realtek,jd_mode = <2>;
+	                realtek,codec_gpio = <&gpio 178 0>;
+	                realtek,in2_diff = <1>;
+	                realtek,in3_diff = <0>;
+	                realtek,in4_diff = <1>;
+	                realtek,bclk_32fs = <0 1 1 1>;
+		};
+
+		tfa9890@34 {
+			compatible = "nxp,tfa9890";
+			reg = <0x34>;
+
+			nxt,fw-boot = "tfa9890_boot.patch";
+			nxt,fw-rom = "tfa9890_rom.patch";
+			nxt,fw-speaker = "tfa9890_left.speaker";
+			nxt,fw-config = "tfa9890.config";
+			nxt,fw-preset = "tfa9890_left_music.preset";
+			nxt,fw-eq = "tfa9890_left_music.eq";
+		};
+
+		tfa9890@37 {
+			compatible = "nxp,tfa9890";
+			reg = <0x37>;
+
+			nxt,fw-boot = "tfa9890_boot.patch";
+			nxt,fw-rom = "tfa9890_rom.patch";
+			nxt,fw-speaker = "tfa9890_right.speaker";
+			nxt,fw-config = "tfa9890.config";
+			nxt,fw-preset = "tfa9890_right_music.preset";
+			nxt,fw-eq = "tfa9890_right_music.eq";
+		};
+
+	};
+	
+	tegra_pwm: pwm@7000a000 {
+		clocks = <&tegra_car 17>;
+	};
+	
+	pwmleds {
+		compatible = "pwm-leds";
+		button_led {
+			label = "button-backlight";
+			pwms = <&tegra_pwm 1 10000>;
+			max-brightness = <100>;
+			max-duty = <50>;
+		};
+	};
+
+	sound {
+		compatible = "nvidia,tegra-audio-rt5671";
+		nvidia,hp-mute-gpios = <&gpio 185 0>;
+		nvidia,i2s-param-hifi = <0 0 2 16 2 48000>;
+	};
+
+	udc@7d000000 {
+		status = "okay";
+		nvidia,id-detection-type = <0x1>;
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,enable-aca-rid-detection;
+		nvidia,qc2-input-voltage = <TEGRA_USB_QC2_9V>;
+		nvidia,qc2-current-limit-ua = <2000000>;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 2 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "aca-rb", "aca-rc";
+		#extcon-cells = <0x1>;
+	};
+	
+	otg@7d000000 {
+		status = "okay";
+		nvidia,enable-pmu-vbus-detection;
+		nvidia,id-detection-type = <0x1>;
+		nvidia,enable-y-cable-detection;
+		nvidia,enable-aca-rid-detection;
+		extcon-cables = <&extcon_cable_xlate 0 &extcon_cable_xlate 1 &extcon_cable_xlate 2 &extcon_cable_xlate 3 &extcon_cable_xlate 4 &extcon_cable_xlate 5>;
+		extcon-cable-names = "vbus", "id", "aca-ra", "y-cable", "aca-rb", "aca-rc";
+		#extcon-cells = <0x1>;
+	};
+
+	ehci@7d000000 {
+		status = "disabled";
+		nvidia,port-otg;
+		nvidia,has-hostpc;
+		nvidia,is-intf-utmi;
+		nvidia,turn-off-vbus-on-lp0;
+		nvidia,hssync-start-delay = <0>;
+		nvidia,idle-wait-delay = <17>;
+		nvidia,elastic-limit = <16>;
+		nvidia,term-range-adj = <6>;
+		nvidia,xcvr-setup = <15>;
+		nvidia,xcvr-lsfslew = <0>;
+		nvidia,xcvr-lsrslew = <3>;
+		nvidia,xcvr-use-fuses;
+		nvidia,vbus-oc-map = <4>;
+		nvidia,xcvr-setup-offset = <0>;
+	};
+
+	tegra_cec {
+		status = "disabled";
+	};
+
+	hdmi {
+		status = "disabled";
+	};
+};
+
+
